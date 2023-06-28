@@ -25,7 +25,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-    query.execute("DROP TABLE IF EXISTS adj_lst_mat_pth") #Это тут временно
+    # query.execute("DROP TABLE IF EXISTS adj_lst_mat_pth") #Это тут временно
 
     # Проверяем, существует ли таблица nst_st
     query.execute("CREATE TABLE IF NOT EXISTS adj_lst_mat_pth (id INT AUTO_INCREMENT PRIMARY KEY,parent_id INT,title VARCHAR(50) NOT NULL,path VARCHAR(100),FOREIGN KEY (parent_id) REFERENCES adj_lst_mat_pth (id) ON DELETE CASCADE);")
@@ -143,10 +143,20 @@ try:
         for line in data.readlines():
             base_line = line.replace("п»ї", "").strip().split(";")
 
-            if base_line[0] == base_line[1]:
-                create(connection, base_line[2])
-            else:
-                create(connection, base_line[2], base_line[1])
+            title = base_line[2]
+            existing_data = get_title(connection, title)
+
+            if existing_data is None:
+                if base_line[0] == base_line[1]:
+                    create(connection, title)
+                else:
+                    create(connection, title, base_line[1])
+
+except FileNotFoundError:
+    print("Файл не найден.")
+
+except mariadb.Error as e:
+    print(f"Ошибка выполнения SQL-запроса: {e}")
 
 except FileNotFoundError:
     print("File not found.")

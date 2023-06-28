@@ -26,7 +26,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-    query.execute("DROP TABLE IF EXISTS nst_st") #Это тут временно
+    # query.execute("DROP TABLE IF EXISTS nst_st") #Это тут временно
 
     # Проверяем, существует ли таблица nst_st
     query.execute("CREATE TABLE IF NOT EXISTS nst_st (id INT AUTO_INCREMENT PRIMARY KEY, left_key INT NOT NULL, right_key INT NOT NULL, title VARCHAR(255) NOT NULL, tree_id INT NOT NULL)")

@@ -25,7 +25,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-    query.execute("DROP TABLE IF EXISTS adj_lst_nst_st") #Это тут временно
+    # query.execute("DROP TABLE IF EXISTS adj_lst_nst_st") #Это тут временно
 
     # Проверяем, существует ли таблица geo_table
     query.execute("CREATE TABLE IF NOT EXISTS `adj_lst_nst_st` (id INT AUTO_INCREMENT PRIMARY KEY, parent_id INT, title VARCHAR(50) NOT NULL, left_key INT NOT NULL, right_key INT NOT NULL, FOREIGN KEY (parent_id) REFERENCES `adj_lst_nst_st`(id) ON DELETE CASCADE)")

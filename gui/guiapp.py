@@ -18,6 +18,12 @@ class GUI:
         self.window = Tk()
         self.window.title("Practice Application")
 
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Установка пути к иконке приложения
+        icon_filename = "natk.ico"
+        icon_path = os.path.join(script_dir, icon_filename)
+
         self.current_form = None  # Ссылка на текущую форму
 
         # Кнопки для изменения содержимого формы
@@ -77,6 +83,8 @@ class GUI:
         self.button_adj_lst_nst_st.grid(row=2, column=4, padx=10, pady=10)
         self.button_mat_pth.grid(row=3, column=4, padx=10, pady=10)
         self.button_adj_lst_mat_pth.grid(row=4, column=4, padx=10, pady=10)
+
+        self.window.iconbitmap(icon_path)
 
         self.window.mainloop()
 

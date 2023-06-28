@@ -26,7 +26,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-    query.execute("DROP TABLE IF EXISTS mat_pth") #Это тут временно
+    # query.execute("DROP TABLE IF EXISTS mat_pth") #Это тут временно
 
     # Проверяем, существует ли таблица nst_st
     query.execute("CREATE TABLE IF NOT EXISTS mat_pth (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, path VARCHAR(100))")
