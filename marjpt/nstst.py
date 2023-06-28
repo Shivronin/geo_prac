@@ -26,7 +26,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-    # query.execute("DROP TABLE IF EXISTS nst_st") #Это тут временно
+    query.execute("DROP TABLE IF EXISTS nst_st") #Это тут временно
 
     # Проверяем, существует ли таблица nst_st
     query.execute("CREATE TABLE IF NOT EXISTS nst_st (id INT AUTO_INCREMENT PRIMARY KEY, left_key INT NOT NULL, right_key INT NOT NULL, title VARCHAR(255) NOT NULL, tree_id INT NOT NULL)")
@@ -36,7 +36,7 @@ except mariadb.Error as e:
     print(f"Error executing SQL statement: {e}")
 
 
-def levels_id(all_nodes: list) -> list:
+def levels_id(connection, all_nodes: list, text_widget) -> list:
     try:
         query = connection.cursor()
         levels = []
@@ -47,7 +47,7 @@ def levels_id(all_nodes: list) -> list:
         query.close()
         return levels
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert(f"Error executing SQL statement: {e}")
 
 
 class NodeNotExistsException(Exception):
@@ -56,20 +56,20 @@ class NodeNotExistsException(Exception):
         self.message = f"Узел с идентификатором {node_id} не существует"
         super().__init__(self.message)
 
-def print_tree():
+def print_tree(connection, text_widget):
     try:
         query = connection.cursor()
         query.execute("SELECT id, left_key, right_key, title, tree_id FROM nst_st ORDER BY tree_id, left_key")
         all_nodes = query.fetchall()
-        levels = levels_id(all_nodes)
+        levels = levels_id(connection ,all_nodes, text_widget)
 
         for level in levels:
             tabs = "    " * level[0]
-            print(f"{tabs}{str(level[1])} {level[2]} (left: {level[3]}, right: {level[4]})")
+            text_widget.insert("end", f"{tabs}{str(level[1])} {level[2]} (left: {level[3]}, right: {level[4]})\n")
 
         query.close()
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert("end", f"Error executing SQL statement: {e}\n")
 
 def mtree_id() -> int:
     try:
@@ -94,7 +94,7 @@ def read(node: str) -> list:
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-def read_childs(title: str, parent_id: int) -> list:
+def read_childs(connection, title: str, parent_id: int) -> list:
     try:
         query = connection.cursor()
         query.execute("SELECT left_key, right_key FROM nst_st where id = %s", (parent_id,))
@@ -111,7 +111,7 @@ def read_childs(title: str, parent_id: int) -> list:
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
         
-def create(node: str, parent_id: int) -> int:
+def create(connection, node: str, parent_id: int) -> int:
     try:
         query = connection.cursor()
         query.execute("SELECT right_key, tree_id FROM nst_st WHERE id = %s", (parent_id,))
@@ -143,9 +143,9 @@ try:
             
             if not existing_nodes:
                 try:
-                    read_childs(base_line[2], base_line[1])
+                    read_childs(connection, base_line[2], base_line[1])
                 except:
-                    create(base_line[2], base_line[1])
+                    create(connection, base_line[2], base_line[1])
             
 except FileNotFoundError:
     print("File not found.")
@@ -153,7 +153,7 @@ except FileNotFoundError:
 except mariadb.Error as e:
     print(f"Error executing SQL statement: {e}")
     
-def delete(node_id: int) -> None:
+def delete(connection, node_id: int) -> None:
     try:
         query = connection.cursor()
 
@@ -184,7 +184,7 @@ def delete(node_id: int) -> None:
         print(f"Ошибка выполнения SQL-запроса: {e}")
         exit(1)
         
-def add_node(title: str, parent_id: int) -> None:
+def add_node(connection, title: str, parent_id: int) -> None:
     try:
         query = connection.cursor()
 
@@ -204,7 +204,7 @@ def add_node(title: str, parent_id: int) -> None:
         query.execute("UPDATE nst_st SET left_key = CASE WHEN left_key > %s THEN left_key + 1 ELSE left_key END, right_key = CASE WHEN right_key >= %s THEN right_key + 1 ELSE right_key END WHERE tree_id = %s", (last_child_right_key, last_child_right_key, parent_node[2]))
 
         # Вставляем новый узел с корректными левыми и правыми ключами
-        new_node_id = create(title, parent_id)
+        new_node_id = create(connection, title, parent_id)
         new_node_right_key = last_child_right_key + 2
         query.execute("UPDATE nst_st SET right_key = %s WHERE id = %s", (new_node_right_key, new_node_id))
         last_child_right_key = new_node_right_key
@@ -216,7 +216,7 @@ def add_node(title: str, parent_id: int) -> None:
         print(f"Error executing SQL statement: {e}")
 
         
-def update_node(node_id: int, new_title: str) -> None:
+def update_node(connection, node_id: int, new_title: str) -> None:
     try:
         query = connection.cursor()
 
@@ -236,9 +236,7 @@ def update_node(node_id: int, new_title: str) -> None:
 
     except mariadb.Error as e:
         print(f"Ошибка выполнения SQL-запроса: {e}")
-        exit(1)
 
-print_tree()
 
 try:
     connection.commit()

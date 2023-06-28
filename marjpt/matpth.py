@@ -46,7 +46,7 @@ def get_id(id: int):
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-def get_title(title: str):
+def get_title(connection, title: str):
     try:
         query = connection.cursor()
         query.execute(f"SELECT * FROM mat_pth WHERE title='{title}'")
@@ -56,7 +56,7 @@ def get_title(title: str):
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-def get_path(path: str):
+def get_path(connection, path: str):
     try:
         query = connection.cursor()
         query.execute(f"SELECT * FROM mat_pth WHERE path='{path}'")
@@ -77,11 +77,12 @@ def get_branch(path: str):
         print(f"Error executing SQL statement: {e}")
 
 
-def add_node(title: str, parent_path: str = None):
+def add_node(connection, title: str, parent_path: str = None):
+
     query = connection.cursor()
 
     # Проверка на существующую запись с таким же названием
-    existing_node = get_title(title)
+    existing_node = get_title(connection, title)
     if existing_node:
         query.close()
         return
@@ -96,7 +97,7 @@ def add_node(title: str, parent_path: str = None):
         except mariadb.Error as err:
             print(err)
     else:
-        parent = get_path(parent_path)
+        parent = get_path(connection, parent_path)
         if parent:
             try:
                 # Создание нового объекта с определенным путем
@@ -122,15 +123,15 @@ try:
 
             if base_line[0] == base_line[1]:
                 # Проверяем, существует ли уже запись с таким же путем
-                existing_node = get_path(base_line[2])
+                existing_node = get_path(connection, base_line[2])
                 if not existing_node:
-                    add_node(base_line[2])
+                    add_node(connection, base_line[2])
             else:
                 parent = get_id(base_line[1])
                 # Проверяем, существует ли уже запись с таким же путем
-                existing_node = get_path(base_line[2])
+                existing_node = get_path(connection, base_line[2])
                 if not existing_node:
-                    add_node(base_line[2], parent[-1])
+                    add_node(connection, base_line[2], parent[-1])
 
     query.close()
 
@@ -141,7 +142,7 @@ except mariadb.Error as e:
     print(f"Error executing SQL statement: {e}")
 
 
-def data_print(path: str, indent=0, printed=None):
+def data_print(path: str, indent=0, printed=None, text_widget=None, connection=connection):
     if printed is None:
         printed = set()
 
@@ -161,17 +162,17 @@ def data_print(path: str, indent=0, printed=None):
 
             if parent[0] not in printed:
                 visited = 'Visited' if parent[0] in visited_nodes else ''
-                print("    " * indent + f"{parent[0]}: {parent[1]}, {parent[-1]} {visited}")
+                text_widget.insert("end","    " * indent + f"{parent[0]}: {parent[1]}, {parent[-1]} {visited}\n")
                 printed.add(parent[0])
-                data_print(parent[-1], indent + 1, printed)
+                data_print(parent[-1], indent + 1, printed, text_widget=text_widget, connection=connection)
 
         query.close()
 
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert("end", f"Error executing SQL statement: {e}")
 
 
-def database_print():
+def database_print(connection, text_widget):
     try:
         query = connection.cursor()
         query.execute("SELECT * FROM mat_pth")
@@ -180,16 +181,16 @@ def database_print():
         for elem in db:
             if str(elem[0]) == elem[-1]:
                 visited_nodes = set()
-                data_print(elem[-1], indent=1, printed=visited_nodes)
+                data_print(elem[-1], indent=1, printed=visited_nodes, text_widget=text_widget, connection=connection)
 
         query.close()
 
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert("end", f"Error executing SQL statement: {e}")
 
 query = connection.cursor()
 
-def update(title: str, new_title: int):
+def update(connection, title: str, new_title: str):
     try:
         query = connection.cursor()
         query.execute(f"UPDATE mat_pth SET title = '{new_title}' WHERE title = '{title}'")
@@ -201,7 +202,7 @@ def update(title: str, new_title: int):
         print(f"Error executing SQL statement: {e}")
 
 
-def delete(path: str) -> None:
+def delete(connection, path: str) -> None:
     try:
         query = connection.cursor()
 
@@ -213,7 +214,6 @@ def delete(path: str) -> None:
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-database_print()
 
 try:
     connection.commit()

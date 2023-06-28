@@ -1,13 +1,12 @@
 import os
-import sys
 from dotenv import load_dotenv
-
-project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(project_path)
 
 load_dotenv()
 
 import mariadb
+
+import asyncio
+import aiomysql
 
 from typing import List, Tuple
 
@@ -31,7 +30,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
     
-    # query.execute("DROP TABLE IF EXISTS geo_table")  # Это тут временно
+    query.execute("DROP TABLE IF EXISTS geo_table")  # Это тут временно
 
     # Проверяем, существует ли таблица geo_table
     query.execute("CREATE TABLE IF NOT EXISTS geo_table (id INT AUTO_INCREMENT PRIMARY KEY, parent_id INT, title VARCHAR(255) NOT NULL, FOREIGN KEY (parent_id) REFERENCES geo_table (id) ON DELETE CASCADE)")
@@ -212,13 +211,11 @@ def database_print(connection, text_widget):
         query.close()
 
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert("end",f"Error executing SQL statement: {e}")
 
 
 try:
     connection.commit()
-    # connection.close()
-    print("Соединение с MariaDB закрыто")
 
 except mariadb.Error as e:
     print(f"Error closing connection to MariaDB: {e}")

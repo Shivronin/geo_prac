@@ -25,7 +25,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-#     query.execute("DROP TABLE IF EXISTS adj_lst_nst_st") #Это тут временно
+    query.execute("DROP TABLE IF EXISTS adj_lst_nst_st") #Это тут временно
 
     # Проверяем, существует ли таблица geo_table
     query.execute("CREATE TABLE IF NOT EXISTS `adj_lst_nst_st` (id INT AUTO_INCREMENT PRIMARY KEY, parent_id INT, title VARCHAR(50) NOT NULL, left_key INT NOT NULL, right_key INT NOT NULL, FOREIGN KEY (parent_id) REFERENCES `adj_lst_nst_st`(id) ON DELETE CASCADE)")
@@ -51,7 +51,7 @@ class NodeNotExistsException(Exception):
         self.message = "Node with id = {0} is not exists".format(title)
         super().__init__(self.message)
 
-def create(title: str, parent_id: int) -> int:
+def create(connection, title: str, parent_id: int) -> int:
     try:
         query = connection.cursor()
         query.execute("SELECT id, right_key FROM adj_lst_nst_st ORDER BY id DESC LIMIT 1")
@@ -85,7 +85,7 @@ def create(title: str, parent_id: int) -> int:
         print(f"Error executing SQL statement: {e}")
     return max_id +1
 
-def levels_id(all_nodes: list) -> list:
+def levels_id(connection, all_nodes: list, text_widget) -> list:
     try:
         query = connection.cursor()
         levels = []
@@ -96,7 +96,7 @@ def levels_id(all_nodes: list) -> list:
         query.close()
         return levels
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert(f"Error executing SQL statement: {e}")
 
 def read(id=None, title=None) -> list:
     try:
@@ -139,30 +139,21 @@ def read_childs(title: str, parent_id: int) -> list:
         print(f"Error executing SQL statement: {e}")
     return all_childs
 
-def data_print():
+def data_print(connection, text_widget):
     try:
         query = connection.cursor()
         query.execute("SELECT id, parent_id, title, left_key, right_key FROM adj_lst_nst_st ORDER BY left_key")
         all_nodes = query.fetchall()
-        levels = levels_id(all_nodes)
+        levels = levels_id(connection ,all_nodes, text_widget)
 
         for level in levels:
-                tabs = "    " * level[0]
-                print(f"{tabs}{str(level[1])} {level[2]} (left: {level[3]}, right: {level[4]})")
+            tabs = "    " * level[0]
+            text_widget.insert("end", f"{tabs}{str(level[1])} {level[2]} (left: {level[3]}, right: {level[4]})\n")
 
         query.close()
         
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
-
-def database_print(levels: list):
-    try:
-        for level in levels:
-            print(str(level[1]) + " " + str(level[2]) + " (" + str(level[3]) + ", " + str(level[4]) + ")")
-    
-    except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
-
+        text_widget.insert(f"Error executing SQL statement: {e}")
 
 try:
     with open("./data/DataBase.csv") as data:
@@ -180,7 +171,7 @@ try:
                 continue
 
             # Выполняем операцию вставки только для новых данных
-            create(title, parent_id)
+            create(connection, title, parent_id)
 
 except FileNotFoundError:
     print("File not found.")
@@ -188,7 +179,7 @@ except FileNotFoundError:
 except mariadb.Error as e:
     print(f"Error executing SQL statement: {e}")
 
-def delete(id: int) -> None:
+def delete(connection, id: int) -> None:
     try:
         query = connection.cursor()
         query.execute("SELECT left_key, right_key FROM adj_lst_nst_st AS go WHERE go.id = %s", (id,))
@@ -204,7 +195,7 @@ def delete(id: int) -> None:
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-def update(title: str, id: int) -> None:
+def update(connection, title: str, id: int) -> None:
     try:
         query = connection.cursor()
         query.execute("UPDATE adj_lst_nst_st SET title = '{0}' WHERE id = {1}".format(title, id))
@@ -213,7 +204,6 @@ def update(title: str, id: int) -> None:
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-data_print()
 
 try:
     connection.commit()

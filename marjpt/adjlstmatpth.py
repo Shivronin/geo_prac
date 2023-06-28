@@ -1,6 +1,7 @@
 import os
 import mariadb
 from dotenv import load_dotenv
+import mariadb
 
 # Загрузка данных из файла .env
 load_dotenv()
@@ -24,7 +25,7 @@ try:
     # Выбираем созданную базу данных
     query.execute("USE dbm")
 
-#     query.execute("DROP TABLE IF EXISTS adj_lst_mat_pth") #Это тут временно
+    query.execute("DROP TABLE IF EXISTS adj_lst_mat_pth") #Это тут временно
 
     # Проверяем, существует ли таблица nst_st
     query.execute("CREATE TABLE IF NOT EXISTS adj_lst_mat_pth (id INT AUTO_INCREMENT PRIMARY KEY,parent_id INT,title VARCHAR(50) NOT NULL,path VARCHAR(100),FOREIGN KEY (parent_id) REFERENCES adj_lst_mat_pth (id) ON DELETE CASCADE);")
@@ -33,7 +34,7 @@ try:
 except mariadb.Error as e:
     print(f"Error executing SQL statement: {e}")
 
-def create(title: str, parent_id=None, parent_path=None):
+def create(connection, title: str, parent_id=None, parent_path=None):
     try:
         query = connection.cursor()
 
@@ -80,7 +81,7 @@ def create(title: str, parent_id=None, parent_path=None):
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-def get_title(title: str):
+def get_title(connection, title: str):
     try:
         query = connection.cursor()
         query.execute(f"SELECT * FROM adj_lst_mat_pth WHERE title='{title}'")
@@ -143,9 +144,9 @@ try:
             base_line = line.replace("п»ї", "").strip().split(";")
 
             if base_line[0] == base_line[1]:
-                create(base_line[2])
+                create(connection, base_line[2])
             else:
-                create(base_line[2], base_line[1])
+                create(connection, base_line[2], base_line[1])
 
 except FileNotFoundError:
     print("File not found.")
@@ -153,7 +154,7 @@ except FileNotFoundError:
 except mariadb.Error as e:
     print(f"Error executing SQL statement: {e}") 
 
-def delete_element(id_or_path):
+def delete_element(connection, id_or_path):
     try:
         query = connection.cursor()
 
@@ -170,7 +171,7 @@ def delete_element(id_or_path):
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
-def update(new_title: str, id=None, path=None):
+def update(connection, new_title: str, id=None, path=None):
     try:
         query = connection.cursor()
         if id is not None:
@@ -184,10 +185,12 @@ def update(new_title: str, id=None, path=None):
     except mariadb.Error as e:
         print(f"Error executing SQL statement: {e}")
 
+visited = set()
 
-visited = set()  # Множество посещенных узлов
-
-def data_print(id: int, indent=0):
+def data_print(id: int, indent=0, visited=None, text_widget=None, connection=connection):
+    if visited is None:
+        visited = set()
+    
     try:
         if id in visited:  # Проверка, был ли узел уже посещен
             return
@@ -207,17 +210,17 @@ def data_print(id: int, indent=0):
             if parent[0] == parent[1]:
                 continue
 
-            print("    " * indent + f"{parent[0]}: {parent[2]}, {parent[-1]}")
+            text_widget.insert("end","    " * indent + f"{parent[0]}: {parent[2]}, {parent[-1]}\n")
 
             # Рекурсивно вызываем data_print для вывода потомков первого родительского узла
-            data_print(parent[0], indent + 1)
+            data_print(parent[0], indent + 1, text_widget=text_widget, connection=connection)
 
         query.close()
 
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
+        text_widget.insert("end",f"Error executing SQL statement: {e}")
 
-def database_print():
+def database_print(connection, text_widget):
     try:
         query = connection.cursor()
         query.execute("SELECT * FROM adj_lst_mat_pth")
@@ -225,15 +228,13 @@ def database_print():
 
         for elem in db:
             if elem[0] == elem[1] and elem[0] not in visited:
-                print(f"{elem[0]}: {elem[2]}, {elem[-1]}")
-                data_print(elem[-1], indent=1) 
+                text_widget.insert("end",f"{elem[0]}: {elem[2]}, {elem[-1]}\n")
+                data_print(elem[-1], indent=1, text_widget=text_widget, connection=connection) 
 
         query.close()
 
     except mariadb.Error as e:
-        print(f"Error executing SQL statement: {e}")
-
-database_print()
+        text_widget.insert("end",f"Error executing SQL statement: {e}")
 
 try:
     connection.commit()
